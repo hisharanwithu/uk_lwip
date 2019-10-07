@@ -62,6 +62,10 @@
 #define UKNETDEV_NETIF_NAME0 'e'
 #define UKNETDEV_NETIF_NAME1 'n'
 
+struct lwip_netdev_data {
+	uint32_t features;
+};
+
 /*
  * Global headroom settings for buffer allocations used on receive
  * and transmit. We are taking the maximum of all uknetdev devices as
@@ -351,6 +355,7 @@ err_t uknetdev_init(struct netif *nf)
 	struct uk_netdev_rxqueue_conf rxq_conf;
 	struct uk_netdev_txqueue_conf txq_conf;
 	struct uk_netdev_info info;
+	struct lwip_netdev_data *lwip_data;
 	const struct uk_hwaddr *hwaddr;
 	unsigned int i;
 	int ret;
@@ -358,6 +363,9 @@ err_t uknetdev_init(struct netif *nf)
 	UK_ASSERT(nf);
 	dev = netif_to_uknetdev(nf);
 	UK_ASSERT(dev);
+	UK_ASSERT(sizeof(dev->scratch_pad) >= CONFIG_LWIP_UKNETDEV_SCRATCH);
+
+	lwip_data = (struct lwip_netdev_data *)dev->scratch_pad;
 
 	LWIP_ASSERT("uknetdev needs an input callback (netif_input or tcpip_input)",
 		    nf->input != NULL);
@@ -390,6 +398,7 @@ err_t uknetdev_init(struct netif *nf)
 	uk_netdev_info_get(dev, &info);
 	if (!info.max_rx_queues || !info.max_tx_queues)
 		return ERR_IF;
+	lwip_data->features = info.features;
 
 	/*
 	 * Update our global (rx|tx)_headroom setting that we use for
