@@ -45,6 +45,7 @@
 #endif /* CONFIG_LWIP_NOTHREADS */
 #include "netif/uknetdev.h"
 #include <uk/init.h>
+#include <arpa/inet.h>
 
 #if LWIP_NETIF_EXT_STATUS_CALLBACK && CONFIG_LWIP_NETIF_STATUS_PRINT
 #include <stdio.h>
@@ -184,6 +185,8 @@ static int liblwip_init(void)
 			   devid);
 
 #if LWIP_IPV4
+		const char *addr;
+		int rc;
 		ip4_arg   = NULL;
 		mask4_arg = NULL;
 		gw4_arg   = NULL;
@@ -204,6 +207,34 @@ static int liblwip_init(void)
 		 *  mask_arg = &mask;
 		 *  gw_arg = &gw;
 		 */
+
+		addr = uk_netdev_einfo_get(dev, UK_NETDEV_IPV4_ADDR_STR);
+		if (addr) {
+			rc = inet_pton(AF_INET, addr, &ip4);
+			if (rc <= 0)
+				uk_pr_warn("Failed to convert the ip address:%s\n",
+						addr);
+			else {
+				addr = uk_netdev_einfo_get(dev, UK_NETDEV_IPV4_MASK_STR);
+				rc = inet_pton(AF_INET, addr, &mask4);
+				if (rc <= 0)
+					uk_pr_warn("Failed to convert the ip address:%s\n",
+							addr);
+				else {
+					ip4_arg = &ip4;
+					mask4_arg = &mask4;
+				}
+			}
+		}
+		addr = uk_netdev_einfo_get(dev, UK_NETDEV_IPV4_GW_STR);
+		if (addr) {
+			rc = inet_pton(AF_INET, addr, &gw4);
+			if (rc <= 0)
+				uk_pr_warn("Failed to convert the ip address:%s\n",
+						addr);
+			else
+				gw4_arg = &gw4;
+		}
 
 		nf = uknetdev_addif(dev, ip4_arg, mask4_arg, gw4_arg);
 #else /* LWIP_IPV4 */
